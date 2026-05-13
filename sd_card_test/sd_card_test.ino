@@ -26,23 +26,6 @@ struct SPICommand {
   }
 };
 
-// // Compute the 7 bit crc of the given data
-// uint8_t crc(uint64_t data) {
-//   uint8_t poly = 0b10011;
-
-//   // Pad the data with n-1 zeros, where n is the width of the poly
-//   uint64_t augmented_data = data << 4;
-
-//   while (augmented_data) {
-//     if (augmented_data & (1 << 64)) {
-//       augmented_data <<= 1;
-//       augmented_data ^= poly;
-//     }
-//   }
-
-//   return augmented_data;
-// }
-
 struct R3SPIResponse {
   uint8_t r1;
   uint32_t ocr;
@@ -51,6 +34,13 @@ struct R3SPIResponse {
     this->r1 = r1;
     this->ocr = ocr;
   }
+};
+
+struct BlockReadResponse {
+  uint8_t r1_response;
+  uint8_t data_token;
+  uint8_t block[512];
+  uint16_t crc;
 };
 
 void sendSPICommand(SPICommand c) {
@@ -81,13 +71,6 @@ void sendSPICommand(SPICommand c) {
     SPI.transfer(buf[i]);
   }
 
-  // Send the command over, most significant byte first
-  // for (int i = 5; i <= 0; i--) {
-  //   Serial.print("Transferring: ");
-  //   Serial.println(buf[i], BIN);
-  //   SPI.transfer(buf[i]);
-  // }
-
   Serial.println("c");
 }
 
@@ -116,6 +99,30 @@ R3SPIResponse readR3SPIResponse() {
   return R3SPIResponse(r1, ocr);
 }
 
+BlockReadResponse readBlockReadResponse() {
+  BlockReadResponse response;
+
+  // Read the command response
+  response.r1_response = readR1SPIResponse();
+
+  // The next byte of the response is the data token, but it's preceeded by some 0xFF's
+  response.data_token = 0;
+  do {
+    response.data_token = SPI.transfer(0xFF);
+  } while(response.data_token == 0xFF);
+  if (response.data_token != 0xFE) { /* TODO: Return an error */ }
+
+  // Read the actual data
+  for (int i = 0; i < 512; i++) {
+    response.block[511-i] = SPI.transfer(0xFF);
+  }
+
+  // Read the checksum. TODO: write the value into the response object
+  SPI.transfer(0xFF);
+  SPI.transfer(0xFF);
+
+  return response;
+}
 
 int initSDCard() {
   // Power on
@@ -181,11 +188,22 @@ void setup() {
   pinMode(CD, OUTPUT);
 
   Serial.begin(115200);
-}
 
-void loop() {
   delay(2000);
   Serial.println("Initializing sd card: ");
   Serial.print("Result: ");
   Serial.println(initSDCard());
+}
+
+void loop() {
+  // Read the block at address 0
+  sendSPICommand(SPICommand(17, 0));
+  auto result = readBlockReadResponse();
+  
+  for (int i = 0; i < 512; i++) {
+    Serial.write(result.block[511-i]);
+  }
+  Serial.println();
+
+  delay(4000);
 }
