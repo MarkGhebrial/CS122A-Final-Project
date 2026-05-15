@@ -1,8 +1,9 @@
 module spi_controller (
     input wire clk,
 
-    // Set this high to begin data transfer. Goes low once the transfer is over
-    inout logic go,
+    // Set this high to begin data transfer.
+    input wire start_tx,
+    output wire tx_done,
 
     // The number of bytes to transfer
     input wire[2:0] num_bytes,
@@ -12,9 +13,9 @@ module spi_controller (
     output logic[63:0] rx_data,
     
     // Clock signal
-    output logic sck,
+    output wire sck,
     // Peripheral out, controller in
-    output logic poci,
+    input logic poci,
     // Peripheral in, controller out
     output logic pico
 );
@@ -22,22 +23,32 @@ module spi_controller (
 // Counts the number of bits transmitted
 logic[6:0] counter = 0;
 
+logic transmitting = 0;
+logic sck_en = 0;
+always @(posedge start_tx) begin 
+    transmitting <= 1;
+end
+
 always @(posedge clk) begin
-    if (go) begin
-        if (counter < (num_bytes * 8) - 1) begin
+    if (transmitting) begin
+        if (counter < (num_bytes * 8) - 0) begin
+            sck_en <= 1;
             counter <= counter + 1;
             // Transmit a bit
-            pico <= (tx_data >> counter) & 1'b1;
+            pico <= (tx_data >> (num_bytes*8 - counter - 1)) & 1'b1;
             // Receive a bit
             rx_data <= { rx_data[62:0], poci } & (~64'b0 >> 8*(8-num_bytes));
             //                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mask off the most significant bits based on the number of bytes we're receiving
         end else begin
             counter <= 0;
             // Indicate that the transmission has finished
-            go <= 0;
+            transmitting <= 0;
+            sck_en <= 0;
         end
     end
 end
 
+assign tx_done = !transmitting;
+assign sck = sck_en && ~clk;
 
 endmodule
