@@ -128,14 +128,6 @@ int initSDCard() {
   // Power on
   // Wait >= 1ms
 
-
-  // for (int i = 0; i < 74; i++) {
-  //   digitalWrite(SCK, HIGH);
-  //   delay(1);
-  //   digitalWrite(SCK, LOW);
-  //   delay(1);
-  // }
-
   // Initialize the SPI peripheral
   SPI.begin();
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0)); // 20 MHz
