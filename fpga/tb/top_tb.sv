@@ -1,28 +1,31 @@
 `include "src/top.sv"
-`timescale 1ns/1ps
+`timescale 1ns/1ps         // Set tick to 1ns. Set sim resolution to 1ps.
+
+/**
+ * Note:
+ *  The TB below is only an example of a testbench written in SV.
+ *  Adapt this for your lab assignments as you see fit.
+ *  An example clk signal has been added to show what a signal decl and usage looks like.
+ *     You are welcome to delete the clk signal if it's not needed.
+ *     For instance, purely combinational circuits do not need clks.
+ *     So for labs without sequential elements, you can remove them.
+ */
 
 module top_tb;
 
-logic clk = 0;
-logic sck = 0;
-logic spi_in = 0;
+/** declare tb signals below */
+logic clk_tb;
+logic dataout_tb;
 
-wire lcd_clk;
-wire lcd_den;
-wire[4:0] lcd_r;
-wire[5:0] lcd_g;
-wire[4:0] lcd_b;
-
-// Unit under test
-top uut
+/** declare module(s) below */
+top dut                    // declare an inst of top called "dut" (device under test)
 (
-    .clk(clk)
+    .CLK(clk_tb),
+    .DATAOUT(dataout_tb)
 );
 
-always begin 
-    #1;
-    clk =~ clk; // Toggle the clock
-end
+localparam CLK_PERIOD = 4;
+always #(CLK_PERIOD/2) clk_tb=~clk_tb;          // toggle clk_tb every #(CLK_PERIOD/2) ticks
 
 initial begin
     $dumpfile("build/top.vcd"); // intermediate file for waveform generation
@@ -30,11 +33,12 @@ initial begin
 end
 
 initial begin
-    for (int i = 0; i < 150000; i = i + 1) begin
-        #2;
-    end
+    /** testbench logic goes below */
+    clk_tb<=1'b1;       // sets clk_tb to 1
+    #(CLK_PERIOD*3);    // waits for CLK_PERIOD * 3 ticks
 
-    $finish;
+    #(CLK_PERIOD*10000000);
+    $finish;            // end simulation, otherwise it runs indefinitely
 end
 
 endmodule
