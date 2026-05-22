@@ -166,11 +166,13 @@ int initSDCard() {
   sendSPICommand(SPICommand(58, 0x00));
   auto cmd58_response = readR3SPIResponse();
   // If !CCS bit in R7 response
-  if (!(cmd58_response.ocr & (0b1 << 30))) {
+  // if (!(cmd58_response.ocr & (0b1 << 30))) {
+    // while (1) Serial.println("yes");
+
     // CMD16 (set block size to 512 bytes)
     sendSPICommand(SPICommand(16, 0x200));
     readR1SPIResponse();
-  }
+  // } else while (1) Serial.println("yes");
   
   return 0;
 }
