@@ -1,4 +1,4 @@
-`include "src/controller.sv"
+`include "src/spi_controller.sv"
 `default_nettype none
 
 /*
@@ -20,7 +20,7 @@ LSB v  7-bit CRC checksum, "1"
     num_bytes <= NUM_BYTES; \
     tx_data <= DATA;
 
-`define RESET_STATE_MACHINE() \
+`define RESET_STATE_MACHINE \
     state <= START_STATE; \
     status <= ERROR_RETRYING; \
     counter <= 0;
@@ -33,7 +33,7 @@ typedef enum logic[1:0] {
     // The module is reading a block
     READING_BLOCK = 2,
     // The module is done reading the block and is currently doing nothing
-    IDLE = 3,
+    IDLE = 3
 } spi_module_status;
 
 module sd_card(
@@ -42,6 +42,7 @@ module sd_card(
 
     // The address of the block to read from
     input wire[31:0] block_addr,
+    output wire[511:0] block_data,
     
     // The status of the module
     output spi_module_status status = INITIALIZING,
@@ -49,7 +50,7 @@ module sd_card(
     output wire sck,
     output wire poci,
     output wire pico,
-    output logic cs = 0,
+    output logic cs = 0
 );
 
 // A register used by the state machine for counting the number of cycles spent in the current state
@@ -110,12 +111,13 @@ typedef enum {
 } states;
 
 states state;
+logic[31:0] prev_block_addr = 0;
 
 logic start_tx = 0;
 wire tx_done;
 logic[2:0] num_bytes = 0;
 logic[63:0] tx_data = 0;
-logic[63:0] rx_data = 0;
+wire[63:0] rx_data = 0;
 spi_controller spi (
     .clk(clk),
     .start_tx(start_tx),
@@ -125,8 +127,9 @@ spi_controller spi (
     .rx_data(rx_data),
     .sck(sck),
     .poci(poci),
-    .pico(pico),
+    .pico(pico)
 );
+
 
 always @(posedge tx_done) begin
     start_tx <= 0;
@@ -177,7 +180,7 @@ always @(posedge clk) begin
                     end
                     else begin
                         // Give up
-                        `RESET_STATE_MACHINE();
+                        `RESET_STATE_MACHINE;
                     end
                 end
             end
@@ -186,7 +189,7 @@ always @(posedge clk) begin
         CMD8_SEND_STATE: begin
             // Wait until CMD8 is done transmitting
             if (tx_done) begin
-                state <= CMD8_RCV_STATE0,
+                state <= CMD8_RCV_STATE0;
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
             end
         end
@@ -207,7 +210,7 @@ always @(posedge clk) begin
                         `SPI_BEGIN_TRANSFER(1, 'hFF);
                         counter <= counter + 1;
                     end else begin
-                        `RESET_STATE_MACHINE();
+                        `RESET_STATE_MACHINE;
                     end
                 end
             end
@@ -223,7 +226,7 @@ always @(posedge clk) begin
                     state <= CMD55_SEND_STATE;
                 end
                 else begin
-                    `RESET_STATE_MACHINE();
+                    `RESET_STATE_MACHINE;
                 end
             end
         end
@@ -248,7 +251,7 @@ always @(posedge clk) begin
                         `SPI_BEGIN_TRANSFER(1, 'hFF);
                         counter <= counter + 1;
                     end else begin
-                        `RESET_STATE_MACHINE();
+                        `RESET_STATE_MACHINE;
                     end
                 end
             end
@@ -261,13 +264,13 @@ always @(posedge clk) begin
         end
         CMD41_RCV_STATE: begin
             if (tx_done) begin
-                // 1st case: we need to transfer another byte
+                // 1st case: we need to read another byte
                 if (rx_data & (1 << 7)) begin
                     if (counter < 16) begin
-                        `SPI_BEGIN_TRANSFER(1, 'hFF);
                         counter <= counter + 1;
+                        `SPI_BEGIN_TRANSFER(1, 'hFF);
                     end else begin
-                        `RESET_STATE_MACHINE();
+                        `RESET_STATE_MACHINE;
                     end
                 end
                 else begin
@@ -299,10 +302,10 @@ always @(posedge clk) begin
                 // If the MSB of the data is 1, read another byte
                 if (rx_data & (1 << 7)) begin
                     if (counter < 16) begin
-                        count <= count + 1;
+                        counter <= counter + 1;
                         `SPI_BEGIN_TRANSFER(1, 'hFF);
                     end else begin
-                        `RESET_STATE_MACHINE();
+                        `RESET_STATE_MACHINE;
                     end
                 end
                 else begin
@@ -314,25 +317,69 @@ always @(posedge clk) begin
             end
         end
 
-
+        // We are actively sending CMD17
         CMD17_SEND_STATE: begin
-
+            if (tx_done) begin
+                `SPI_BEGIN_TRANSFER(1, 'hFF);
+                state <= CMD17_RCV_STATE;
+            end
         end
+        // We are waiting for the CMD17 response
         CMD17_RCV_STATE: begin
-
+            if (tx_done) begin
+                if (!(rx_data & (1 << 7))) begin
+                    // Go to the next state
+                    state <= BLOCK_READ_STATE;
+                    counter <= 0;
+                    `SPI_BEGIN_TRANSFER(8, ~64'b0);
+                end
+                else begin
+                    if (counter < 16) begin
+                        `SPI_BEGIN_TRANSFER(1, 'hFF);
+                        counter <= counter + 1;
+                    end else begin
+                        `RESET_STATE_MACHINE;
+                    end
+                end
+            end
         end
+        // We are reading the block data
         BLOCK_READ_STATE: begin
-
+            if (tx_done) begin
+                if (counter < 8) begin
+                    // Shift the received data into the block_data register
+                    block_data = { block_data[447:0], rx_data };
+                    counter <= counter + 1;
+                end
+                else begin
+                    counter <= 0;
+                    state <= CHECKSUM_READ_STATE;
+                    // Begin reading the two checksum bytes
+                    `SPI_BEGIN_TRANSFER(2, 'hFFFF);
+                end
+            end
         end
         CHECKSUM_READ_STATE: begin
-
+            if (tx_done) begin
+                // Don't verify the checksum, just go straight to the idle state
+                state <= IDLE_STATE;
+                status <= IDLE;
+            end
         end
 
-        // Waiting for block_addr to change
+        // We're done reading the block and can chill until the requested block address changes
         IDLE_STATE: begin
-
+            // Wait for block_addr to change
+            if (prev_block_addr != block_addr) begin
+                state <= CMD17_SEND_STATE;
+                status <= READING_BLOCK;
+                counter <= 0;
+                `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(17, block_addr));
+            end
         end
     endcase
+
+    prev_block_addr <= block_addr;
 end
 
 
