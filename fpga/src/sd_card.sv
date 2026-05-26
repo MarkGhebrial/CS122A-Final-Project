@@ -117,7 +117,7 @@ logic start_tx = 0;
 wire tx_done;
 logic[2:0] num_bytes = 0;
 logic[63:0] tx_data = 0;
-wire[63:0] rx_data = 0;
+wire[63:0] rx_data;
 spi_controller spi (
     .clk(clk),
     .start_tx(start_tx),
