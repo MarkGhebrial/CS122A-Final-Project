@@ -1,4 +1,5 @@
-`include "src/top.sv"
+`include "src/dac.sv"
+`include "src/divider.sv"
 `timescale 1ns/1ps         // Set tick to 1ns. Set sim resolution to 1ps.
 
 /**
@@ -15,13 +16,21 @@ module top_tb;
 
 /** declare tb signals below */
 logic clk_tb;
+logic divclk_tb;
 logic dataout_tb;
+logic lrout_tb;
 
 /** declare module(s) below */
-top dut                    // declare an inst of top called "dut" (device under test)
+divider divide(
+    .pclk(clk_tb),
+    .clkout(divclk_tb)
+);
+
+dac dut                    // declare an inst of top called "dut" (device under test)
 (
-    .CLK(clk_tb),
-    .DATAOUT(dataout_tb)
+    .pclk(divclk_tb),
+    .dataOut(dataout_tb),
+    .lrOut(lrout_tb)
 );
 
 localparam CLK_PERIOD = 4;
@@ -37,7 +46,7 @@ initial begin
     clk_tb<=1'b1;       // sets clk_tb to 1
     #(CLK_PERIOD*3);    // waits for CLK_PERIOD * 3 ticks
 
-    #(CLK_PERIOD*10000000);
+    #(CLK_PERIOD*1000000);
     $finish;            // end simulation, otherwise it runs indefinitely
 end
 

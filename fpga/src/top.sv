@@ -1,4 +1,5 @@
 `include "src/dac.sv"
+`include "src/divider.sv"
 `include "src/clk.v"
 module top (
     /** Input Ports */
@@ -11,11 +12,17 @@ module top (
 );
 
 /** Logic */
+logic clk512;
 logic clkdiv;
 
 pll clk5120(
     .clkin(CLK),
-    .clkout0(clkdiv)
+    .clkout0(clk512)
+);
+
+divider divider(
+    .pclk(clk512),
+    .clkout(clkdiv)
 );
 
 dac dac1 (
