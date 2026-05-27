@@ -42,7 +42,7 @@ module sd_card(
 
     // The address of the block to read from
     input wire[31:0] block_addr,
-    output wire[511:0] block_data,
+    output logic[511:0] block_data,
     
     // The status of the module
     output spi_module_status status = INITIALIZING,
@@ -348,7 +348,7 @@ always @(posedge clk) begin
             if (tx_done) begin
                 if (counter < 8) begin
                     // Shift the received data into the block_data register
-                    block_data = { block_data[447:0], rx_data };
+                    block_data <= { block_data[447:0], rx_data };
                     counter <= counter + 1;
                 end
                 else begin

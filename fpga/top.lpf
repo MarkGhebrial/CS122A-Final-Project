@@ -20,11 +20,19 @@ INPUT PORT "sd_poci" IO_TYPE=LVCMOS33;
 
 
 // Outputs for pico communication
-LOCATE COMP "pico_sck" SITE "K3";
-IOBUF PORT "pico_sck" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "pico_pico" SITE "H3";
-IOBUF PORT "pico_pico" DRIVE=4 IO_TYPE=LVCMOS33;
+// LOCATE COMP "pico_sck" SITE "K3";
+// IOBUF PORT "pico_sck" DRIVE=4 IO_TYPE=LVCMOS33;
+// LOCATE COMP "pico_pico" SITE "H3";
+// IOBUF PORT "pico_pico" DRIVE=4 IO_TYPE=LVCMOS33;
 
 // Inputs for pico communication
-LOCATE COMP "pico_poci" SITE "K4";
-INPUT PORT "pico_poci" IO_TYPE=LVCMOS33;
+// LOCATE COMP "pico_poci" SITE "K4";
+// INPUT PORT "pico_poci" IO_TYPE=LVCMOS33;
+
+
+
+LOCATE COMP "status[0]" SITE "K3";
+IOBUF PORT "status[0]" DRIVE=4 IO_TYPE=LVCMOS33;
+
+LOCATE COMP "status[1]" SITE "H3";
+IOBUF PORT "status[1]" DRIVE=4 IO_TYPE=LVCMOS33;
