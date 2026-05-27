@@ -16,7 +16,7 @@ LSB v  7-bit CRC checksum, "1"
     ((CRC << 1) | 1'b1)
 
 `define SPI_BEGIN_TRANSFER(NUM_BYTES, DATA) \
-    start_tx <= 1; \
+    start_tx <= ~start_tx; \
     num_bytes <= NUM_BYTES; \
     tx_data <= DATA;
 
@@ -114,14 +114,14 @@ states state;
 logic[31:0] prev_block_addr = 0;
 
 logic start_tx = 0;
-wire tx_done;
-logic[2:0] num_bytes = 0;
+wire spi_transmitting;
+logic[3:0] num_bytes;
 logic[63:0] tx_data = 0;
 wire[63:0] rx_data;
 spi_controller spi (
     .clk(clk),
     .start_tx(start_tx),
-    .tx_done(tx_done),
+    .transmitting(spi_transmitting),
     .num_bytes(num_bytes),
     .tx_data(tx_data),
     .rx_data(rx_data),
@@ -130,46 +130,41 @@ spi_controller spi (
     .pico(pico)
 );
 
-
-always @(posedge tx_done) begin
-    start_tx <= 0;
-end
-
 always @(posedge clk) begin
     case (state)
         START_STATE: begin
-            // Send four bytes of 0xFF with cs inactive
+            // Send eight bytes of 0xFF with cs inactive
             cs <= 1;
-            `SPI_BEGIN_TRANSFER(4, 64'hFFFFFFFF);
+            `SPI_BEGIN_TRANSFER(8, ~64'b0);
             // Unconditionally go to the next state
             state <= DUMMY_CYCLE_STATE;
         end
         DUMMY_CYCLE_STATE: begin
             // Wait until the SPI data transfer is over
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // Go to the next state
                 state <= CMD0_SEND_STATE;
                 cs <= 0;
-                `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(0, 0, 7'b1001010));
+                `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(0, 0, 7'b1001010));
             end
         end
         CMD0_SEND_STATE: begin
             // Wait until the SPI data transfer is over
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 state <= CMD0_RCV_STATE;
                 // Transfer 0xFF so we can read the response from the card
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
             end
         end
         CMD0_RCV_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // Correct response. Go to next state
                 if (rx_data) begin
                     // Go to the next state
                     state <= CMD8_SEND_STATE;
                     counter <= 0;
                     // Start transmitting CMD8
-                    `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(8, 'h1AA, 7'b1000011));
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(8, 'h1AA, 7'b1000011));
                 end
                 // Wrong response. Read another byte
                 else begin
@@ -188,14 +183,14 @@ always @(posedge clk) begin
 
         CMD8_SEND_STATE: begin
             // Wait until CMD8 is done transmitting
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 state <= CMD8_RCV_STATE0;
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
             end
         end
         // Receiving the first byte of the CMD8 response
         CMD8_RCV_STATE0: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // If the MSB of the response byte is 0, go to the next state
                 if (!(rx_data & (1 << 7))) begin
                     // Go to the next state
@@ -218,11 +213,11 @@ always @(posedge clk) begin
         // Receiving the last 4 bytes of the CMD8 response
         CMD8_RCV_STATE1: begin
             // If we're done reading the rest of the CMD8 response...
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 /// ...verify that the response is correct...
                 if (rx_data == 'h1AA) begin
                     // ... and go to the next state
-                    `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(55, 0))
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(55, 0))
                     state <= CMD55_SEND_STATE;
                 end
                 else begin
@@ -233,18 +228,18 @@ always @(posedge clk) begin
 
         CMD55_SEND_STATE: begin
             // Wait until the transfer finishes
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 state <= CMD55_RCV_STATE;
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
             end
         end
         CMD55_RCV_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 if (!(rx_data & (1 << 7))) begin
                     // Go to the next state
                     state <= CMD41_SEND_STATE;
                     counter <= 0;
-                    `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(41, 'h40000000));
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(41, 'h40000000));
                 end
                 else begin
                     if (counter < 16) begin
@@ -257,13 +252,13 @@ always @(posedge clk) begin
             end
         end
         CMD41_SEND_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
                 state <= CMD41_RCV_STATE;
             end
         end
         CMD41_RCV_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // 1st case: we need to read another byte
                 if (rx_data & (1 << 7)) begin
                     if (counter < 16) begin
@@ -276,7 +271,7 @@ always @(posedge clk) begin
                 else begin
                     if (rx_data == 'h01) begin
                         // Send CMD55 again
-                        `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(55, 0))
+                        `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(55, 0))
                         state <= CMD55_SEND_STATE;
                         counter <= 0;
                     end
@@ -284,7 +279,7 @@ always @(posedge clk) begin
                         // Go send CMD16
                         state <= CMD16_SEND_STATE;
                         counter <= 0;
-                        `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(16, 'h200));
+                        `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(16, 'h200));
                     end
                 end
             end
@@ -292,13 +287,13 @@ always @(posedge clk) begin
 
         CMD16_SEND_STATE: begin
             // Wait for the transfer to finish
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
                 state <= CMD16_RCV_STATE;
             end
         end
         CMD16_RCV_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // If the MSB of the data is 1, read another byte
                 if (rx_data & (1 << 7)) begin
                     if (counter < 16) begin
@@ -312,21 +307,21 @@ always @(posedge clk) begin
                     state <= CMD17_SEND_STATE;
                     status <= READING_BLOCK;
                     counter <= 0;
-                    `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(17, block_addr));
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(17, block_addr));
                 end
             end
         end
 
         // We are actively sending CMD17
         CMD17_SEND_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 `SPI_BEGIN_TRANSFER(1, 'hFF);
                 state <= CMD17_RCV_STATE;
             end
         end
         // We are waiting for the CMD17 response
         CMD17_RCV_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 if (!(rx_data & (1 << 7))) begin
                     // Go to the next state
                     state <= BLOCK_READ_STATE;
@@ -345,7 +340,7 @@ always @(posedge clk) begin
         end
         // We are reading the block data
         BLOCK_READ_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 if (counter < 8) begin
                     // Shift the received data into the block_data register
                     block_data <= { block_data[447:0], rx_data };
@@ -360,7 +355,7 @@ always @(posedge clk) begin
             end
         end
         CHECKSUM_READ_STATE: begin
-            if (tx_done) begin
+            if (!spi_transmitting) begin
                 // Don't verify the checksum, just go straight to the idle state
                 state <= IDLE_STATE;
                 status <= IDLE;
@@ -374,7 +369,7 @@ always @(posedge clk) begin
                 state <= CMD17_SEND_STATE;
                 status <= READING_BLOCK;
                 counter <= 0;
-                `SPI_BEGIN_TRANSFER(4, `SPI_COMMAND(17, block_addr));
+                `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(17, block_addr));
             end
         end
     endcase
