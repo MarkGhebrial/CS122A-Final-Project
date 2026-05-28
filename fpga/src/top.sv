@@ -1,5 +1,7 @@
 `include "src/sd_card.sv"
-// `include "src/spi_controller.sv"
+`include "src/dac.sv"
+`include "src/divider.sv"
+`include "src/clk.v"
 
 module top (
     input wire clk, 
@@ -12,15 +14,16 @@ module top (
     // input wire pico_poci, // Pi pico data input
     // output wire pico_pico, // Pi pico data output
 
-    // output logic test = 0
+    output spi_module_status status.
 
-    output spi_module_status status
+    output logic DATAOUT,
+    output logic DAC_CLK,
+    output logic DAC_LRC
 );
 
 
 logic[31:0] block_addr = 0;
 wire[511:0] block_data;
-
 sd_card card_controller (
     .clk(clk),
     .block_addr(block_addr),
@@ -31,64 +34,26 @@ sd_card card_controller (
     .cs(sd_cs)
 );
 
-// logic pico_start_tx = 0;
-// wire pico_tx_done;
-// logic[2:0] pico_num_bytes = 8;
-// logic[63:0] pico_tx_data = 0;
-// wire[63:0] pico_rx_data;
-// spi_controller pico_controller (
-//     .clk(clk),
-//     .start_tx(pico_start_tx),
-//     .tx_done(pico_tx_done),
-//     .num_bytes(pico_num_bytes),
-//     .tx_data(pico_tx_data),
-//     .rx_data(pico_rx_data),
-//     .sck(pico_sck),
-//     .poci(pico_poci),
-//     .pico(pico_pico)
-// );
-// always @(posedge pico_tx_done) begin
-//     pico_start_tx <= 0;
-// end
+/** Logic */
+logic clk512;
+logic clkdiv;
 
-always @(posedge clk) begin
-    // test <= ~test;
+pll clk5120(
+    .clkin(clk),
+    .clkout0(clk512)
+);
 
-    // if (pico_tx_done) begin
-    //     pico_tx_data <= 'hAAAAAA;
-    //     pico_num_bytes <= 3;
-    //     pico_start_tx <= 1;
-    // end
+divider divider(
+    .pclk(clk512),
+    .clkout(clkdiv)
+);
 
-    // // When the sd_card module is done reading the block
-    // if (status == IDLE) begin
-    //     // If we're not currently transmitting anything over to the pico...
-    //     if (pico_tx_done) begin
-    //         // ..transmit the upper 64 bits of the block
-    //         pico_tx_data <= block_data[511:448];
-    //         pico_num_bytes <= 8;
-    //         pico_start_tx <= 1;
+dac dac1 (
+    .pclk(clkdiv),
+    .dataOut(DATAOUT),
+    .lrOut(DAC_LRC)
+);
 
-    //         // Then start reading the next block
-    //         block_addr <= block_addr + 1;
-    //     end
-    // end
-    // else if (status == INITIALIZING) begin
-    //     // Transmit "INIT" to the pico over SPI
-    //     if (pico_tx_done) begin
-    //         pico_tx_data <= "INIT";
-    //         pico_num_bytes <= 4;
-    //         pico_start_tx <= 1;
-    //     end
-    // end
-    // else if (status == ERROR_RETRYING) begin
-    //     // Transmit "ERR" to the pico over SPI
-    //     if (pico_tx_done) begin
-    //         pico_tx_data <= "ERR";
-    //         pico_num_bytes <= 3;
-    //         pico_start_tx <= 1;
-    //     end
-    // end
-end
+assign DAC_CLK = clkdiv;
 
 endmodule
