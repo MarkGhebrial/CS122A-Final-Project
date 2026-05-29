@@ -34,7 +34,7 @@ typedef enum logic[1:0] {
     READING_BLOCK = 2,
     // The module is done reading the block and is currently doing nothing
     IDLE = 3
-} spi_module_status;
+} spi_module_status; // TODO: Rename this to `sd_module_status`
 
 module sd_card(
     // Clock source
