@@ -14,7 +14,7 @@ module top (
     // input wire pico_poci, // Pi pico data input
     // output wire pico_pico, // Pi pico data output
 
-    output spi_module_status status.
+    output spi_module_status status,
 
     output logic DATAOUT,
     output logic DAC_CLK,
