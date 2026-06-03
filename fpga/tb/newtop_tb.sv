@@ -1,12 +1,12 @@
-`include "src/spinning_top.sv"
+`include "src/newtop.sv"
 `timescale 1ns/1ps
 
-module top_tb;
+module newtop_tb;
 
 logic clk = 0;
 
 // Unit under test
-spinning_top uut
+newtop uut
 (
     .clk(clk)
 );
@@ -17,8 +17,8 @@ always begin
 end
 
 initial begin
-    $dumpfile("build/spinning_top.vcd"); // intermediate file for waveform generation
-    $dumpvars(0, top_tb);       // capture all signals under top_tb
+    $dumpfile("build/newtop.vcd"); // intermediate file for waveform generation
+    $dumpvars(0, newtop_tb);       // capture all signals under top_tb
 end
 
 initial begin

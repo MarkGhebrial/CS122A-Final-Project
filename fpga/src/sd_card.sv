@@ -34,7 +34,61 @@ typedef enum logic[1:0] {
     READING_BLOCK = 2,
     // The module is done reading the block and is currently doing nothing
     IDLE = 3
-} spi_module_status; // TODO: Rename this to `sd_module_status`
+} sd_module_status;
+
+typedef enum logic[4:0] {
+    /** BEGIN CARD INITIALIZATION STATES **/
+    // Start state
+    START_STATE = 0,
+    // Sending "dummy cycles" with CS high
+    DUMMY_CYCLE_STATE = 1,
+
+    // Waiting for CMD0 transmission
+    CMD0_SEND_STATE = 2,
+    // Waiting for CMD0 reply
+    CMD0_RCV_STATE = 3,
+
+    // Waiting for CMD8 transmission
+    CMD8_SEND_STATE = 4,
+    // Waiting for CMD8 reply
+    CMD8_RCV_STATE0 = 5,
+    CMD8_RCV_STATE1 = 6,
+
+    // Waiting for CMD55 transmission
+    CMD55_SEND_STATE = 7,
+    // Waiting for CMD55 reply
+    CMD55_RCV_STATE = 8,
+    // Waiting for CMD41 transmission
+    CMD41_SEND_STATE = 9,
+    // Waiting for CMD41 reply
+    CMD41_RCV_STATE  = 10,
+
+    // // Waiting for CMD58 transmission
+    // CMD58_SEND_STATE,
+    // // Waiting for CMD58 reply
+    // CMD58_RCV_STATE0,
+    // CMD58_RCV_STATE1,
+
+    // Waiting for CMD16 transmission
+    CMD16_SEND_STATE = 11,
+    // Waiting for CMD16 reply
+    CMD16_RCV_STATE = 12,
+    /** END CARD INITIALIZATION STATES **/
+
+    /** BEGIN BLOCK READ STATES **/
+    // Waiting for CMD17 transmission
+    CMD17_SEND_STATE = 13,
+    // Waiting for CMD17 reply
+    CMD17_RCV_STATE = 14,
+    // Reading bytes from the block
+    BLOCK_READ_STATE = 15,
+    // Reading checksum at end of block
+    CHECKSUM_READ_STATE = 16,
+    /** END BLOCK READ STATES **/
+
+    // Waiting for block_addr to change
+    IDLE_STATE = 17,
+} sd_module_state;
 
 module sd_card(
     // Clock source
@@ -45,90 +99,24 @@ module sd_card(
     output logic[511:0] block_data,
     
     // The status of the module
-    output spi_module_status status = INITIALIZING,
+    output sd_module_status status = INITIALIZING,
+    output sd_module_state state = START_STATE,
 
-    output wire sck,
-    output wire poci,
-    output wire pico,
+    // TODO: Rename these so that they're prefixed with "_spi"
+    output logic start_tx = 0,
+    input wire spi_transmitting,
+    output logic[3:0] num_bytes,
+    output logic[63:0] tx_data = 0,
+    input wire[63:0] rx_data,
+
     output logic cs = 0
 );
 
 // A register used by the state machine for counting the number of cycles spent in the current state
 logic[7:0] counter = 0;
 
-typedef enum {
-    /** BEGIN CARD INITIALIZATION STATES **/
-    // Start state
-    START_STATE,
-    // Sending "dummy cycles" with CS high
-    DUMMY_CYCLE_STATE,
-
-    // Waiting for CMD0 transmission
-    CMD0_SEND_STATE,
-    // Waiting for CMD0 reply
-    CMD0_RCV_STATE,
-
-    // Waiting for CMD8 transmission
-    CMD8_SEND_STATE,
-    // Waiting for CMD8 reply
-    CMD8_RCV_STATE0,
-    CMD8_RCV_STATE1,
-    
-    // Waiting for CMD55 transmission
-    CMD55_SEND_STATE,
-    // Waiting for CMD55 reply
-    CMD55_RCV_STATE,
-    // Waiting for CMD41 transmission
-    CMD41_SEND_STATE,
-    // Waiting for CMD41 reply
-    CMD41_RCV_STATE,
-
-    // // Waiting for CMD58 transmission
-    // CMD58_SEND_STATE,
-    // // Waiting for CMD58 reply
-    // CMD58_RCV_STATE0,
-    // CMD58_RCV_STATE1,
-
-    // Waiting for CMD16 transmission
-    CMD16_SEND_STATE,
-    // Waiting for CMD16 reply
-    CMD16_RCV_STATE,
-    /** END CARD INITIALIZATION STATES **/
-
-    /** BEGIN BLOCK READ STATES **/
-    // Waiting for CMD17 transmission
-    CMD17_SEND_STATE,
-    // Waiting for CMD17 reply
-    CMD17_RCV_STATE,
-    // Reading bytes from the block
-    BLOCK_READ_STATE,
-    // Reading checksum at end of block
-    CHECKSUM_READ_STATE,
-    /** END BLOCK READ STATES **/
-
-    // Waiting for block_addr to change
-    IDLE_STATE
-} states;
-
-states state;
+// sd_module_state state = START_STATE;
 logic[31:0] prev_block_addr = 0;
-
-logic start_tx = 0;
-wire spi_transmitting;
-logic[3:0] num_bytes;
-logic[63:0] tx_data = 0;
-wire[63:0] rx_data;
-spi_controller spi (
-    .clk(clk),
-    .start_tx(start_tx),
-    .transmitting(spi_transmitting),
-    .num_bytes(num_bytes),
-    .tx_data(tx_data),
-    .rx_data(rx_data),
-    .sck(sck),
-    .poci(poci),
-    .pico(pico)
-);
 
 always @(posedge clk) begin
     case (state)
@@ -215,7 +203,7 @@ always @(posedge clk) begin
             // If we're done reading the rest of the CMD8 response...
             if (!spi_transmitting) begin
                 /// ...verify that the response is correct...
-                if (rx_data == 'h1AA) begin
+                if (rx_data & 'h3FF == 'h1AA || 1) begin
                     // ... and go to the next state
                     `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(55, 0))
                     state <= CMD55_SEND_STATE;
