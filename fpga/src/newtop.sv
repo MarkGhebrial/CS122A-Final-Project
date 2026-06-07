@@ -55,22 +55,15 @@ sd_card sd (
     .cs(sd_cs)
 );
 
-logic[4:0] max_state = 0;
 
 assign logic_analyzer_pins = {
-    4'b0,
+    state,
     sd_poci,
     sd_pico,
     sd_sck
-    // status == READING_BLOCK
-    // max_state == 6 //clk
 };
 
 always @(posedge clk) begin
-    if (state > max_state) begin
-        max_state <= state;
-    end
-
     if (status == IDLE) begin
         if (block_addr == 0) begin
             block_addr <= 1;

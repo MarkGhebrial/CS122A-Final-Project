@@ -64,30 +64,30 @@ typedef enum logic[4:0] {
     CMD41_RCV_STATE  = 10,
 
     // // Waiting for CMD58 transmission
-    // CMD58_SEND_STATE,
+    CMD58_SEND_STATE = 11,
     // // Waiting for CMD58 reply
-    // CMD58_RCV_STATE0,
-    // CMD58_RCV_STATE1,
+    CMD58_RCV_STATE0 = 12,
+    CMD58_RCV_STATE1 = 13,
 
     // Waiting for CMD16 transmission
-    CMD16_SEND_STATE = 11,
+    CMD16_SEND_STATE = 14,
     // Waiting for CMD16 reply
-    CMD16_RCV_STATE = 12,
+    CMD16_RCV_STATE = 15,
     /** END CARD INITIALIZATION STATES **/
 
     /** BEGIN BLOCK READ STATES **/
     // Waiting for CMD17 transmission
-    CMD17_SEND_STATE = 13,
+    CMD17_SEND_STATE = 16,
     // Waiting for CMD17 reply
-    CMD17_RCV_STATE = 14,
+    CMD17_RCV_STATE = 17,
     // Reading bytes from the block
-    BLOCK_READ_STATE = 15,
+    BLOCK_READ_STATE = 18,
     // Reading checksum at end of block
-    CHECKSUM_READ_STATE = 16,
+    CHECKSUM_READ_STATE = 19,
     /** END BLOCK READ STATES **/
 
     // Waiting for block_addr to change
-    IDLE_STATE = 17,
+    IDLE_STATE = 20
 } sd_module_state;
 
 module sd_card(
@@ -147,7 +147,7 @@ always @(posedge clk) begin
         CMD0_RCV_STATE: begin
             if (!spi_transmitting) begin
                 // Correct response. Go to next state
-                if (rx_data) begin
+                if (!(rx_data & (1 << 7))) begin
                     // Go to the next state
                     state <= CMD8_SEND_STATE;
                     counter <= 0;
@@ -257,18 +257,65 @@ always @(posedge clk) begin
                     end
                 end
                 else begin
-                    if (rx_data == 'h01) begin
+                    if (rx_data & 'hFF == 'h01) begin // TODO: This condition is broken for some reason
                         // Send CMD55 again
                         `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(55, 0))
                         state <= CMD55_SEND_STATE;
                         counter <= 0;
                     end
                     else begin
-                        // Go send CMD16
-                        state <= CMD16_SEND_STATE;
+                        // Go send CMD58
+                        state <= CMD58_SEND_STATE;
                         counter <= 0;
-                        `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(16, 'h200));
+                        `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(58, 0));
                     end
+                end
+            end
+        end
+
+        CMD58_SEND_STATE: begin
+            // Wait until CMD58 is done transmitting
+            if (!spi_transmitting) begin
+                state <= CMD58_RCV_STATE0;
+                `SPI_BEGIN_TRANSFER(1, 'hFF);
+            end
+        end
+        // Receiving the first byte of the CMD8 response
+        CMD58_RCV_STATE0: begin
+            if (!spi_transmitting) begin
+                // If the MSB of the response byte is 0, go to the next state
+                if (!(rx_data & (1 << 7))) begin
+                    // Go to the next state
+                    state <= CMD58_RCV_STATE1;
+                    counter <= 0;
+                    // Begin reading the next 32 bits of the response
+                    `SPI_BEGIN_TRANSFER(4, 'hFFFFFFFF);
+                end
+                // Otherwise, read another byte
+                else begin
+                    if (counter < 16) begin
+                        `SPI_BEGIN_TRANSFER(1, 'hFF);
+                        counter <= counter + 1;
+                    end else begin
+                        `RESET_STATE_MACHINE;
+                    end
+                end
+            end
+        end
+        // Receiving the last 4 bytes of the CMD58 response
+        CMD58_RCV_STATE1: begin
+            // If we're done reading the rest of the CMD58 response...
+            if (!spi_transmitting) begin
+                /// ...decide which state to go to next based off of the CCS bit in the response
+                if (!(rx_data & (1 << 30)) && 0) begin
+                    // ... and go to the next state
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(16, 'h200));
+                    state <= CMD16_SEND_STATE;
+                end
+                else begin
+                    state <= CMD17_SEND_STATE;
+                    status <= READING_BLOCK;
+                    `SPI_BEGIN_TRANSFER(6, `SPI_COMMAND(17, block_addr));
                 end
             end
         end
