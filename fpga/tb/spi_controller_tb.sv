@@ -11,19 +11,19 @@ end
 
 logic clk = 1;
 
-logic start_tx = 0;
-wire tx_done;
-logic[2:0] num_bytes = 0;
+logic start_tx = 1;
+wire transmitting;
+logic[3:0] num_bytes = 0;
 logic[63:0] tx_data = 0;
 wire[63:0] rx_data;
 wire sck;
-logic poci = 0;
+wire poci;
 wire pico;
 spi_controller uut
 (
     .clk(clk),
     .start_tx(start_tx),
-    .tx_done(tx_done),
+    .transmitting(transmitting),
     .num_bytes(num_bytes),
     .tx_data(tx_data),
     .rx_data(rx_data),
@@ -37,19 +37,24 @@ always begin
     clk =~ clk; // Toggle the clock
 end
 
+logic[63:0] peripheral_data = 'h01;
+int counter = 7;
+always @(negedge sck) begin
+    counter = counter - 1;
+end
+assign poci = peripheral_data[counter];
+
 initial begin
     #2;
     // Read one byte
-    num_bytes = 2;
-    tx_data = 64'hBEEF;
-    start_tx = 1;
-    #2;
-    start_tx = 0;
-    #2;
-    while(!tx_done) begin 
-        poci = ~poci;
+    num_bytes = 1;
+    tx_data = 64'hFF;
+    start_tx = ~start_tx;
+
+    while(transmitting) begin
         #2;
     end
+    #4;
 
     $finish;
 end

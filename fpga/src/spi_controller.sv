@@ -33,15 +33,21 @@ always @(posedge clk) begin
         if (counter < num_bytes * 8) begin
             sck_en <= 1;
             counter <= counter + 1;
-            // Transmit a bit
+            // Write to pico on falling edges of the clock pin
             pico <= (tx_data >> (num_bytes*8 - counter - 1)) & 1'b1;
-            // Receive a bit
-            rx_data <= { rx_data[62:0], poci } & (~64'b0 >> 8*(8-num_bytes));
-            //                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mask off the most significant bits based on the number of bytes we're receiving
         end else begin
             counter <= 0;
             sck_en <= 0;
         end
+    end
+end
+
+// Read poci on rising edges of the clock pin
+always @(posedge sck) begin
+    if (sck_en) begin
+        // Receive a bit
+        rx_data <= { rx_data[62:0], poci } & (~64'b0 >> 8*(8-num_bytes));
+        //                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mask off the most significant bits based on the number of bytes we're receiving
     end
 end
 
