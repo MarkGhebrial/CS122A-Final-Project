@@ -57,20 +57,25 @@ sd_card sd (
 
 
 assign logic_analyzer_pins = {
-    state,
-    sd_poci,
-    sd_pico,
+    // state,
+    // rx_data[30],
+    // rx_data[30],
+    // rx_data[30],
+    // rx_data[30],
+    // rx_data[30],
+    sd_pico, // MOSI
+    sd_poci, // MISO
     sd_sck
 };
 
 always @(posedge clk) begin
     if (status == IDLE) begin
-        if (block_addr == 0) begin
-            block_addr <= 1;
-        end else begin
-            block_addr <= 0;
-        end
-        // block_addr <= block_addr + 1;
+        // if (block_addr == 0) begin
+        //     block_addr <= 1;
+        // end else begin
+        //     block_addr <= 0;
+        // end
+        block_addr <= block_addr + 1;
     end
 end
 
