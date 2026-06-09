@@ -1,5 +1,8 @@
+# Build directory
 build
+
 # GTKWave save files
+gtkw
 *.gtkw
 
 # SD card image files
