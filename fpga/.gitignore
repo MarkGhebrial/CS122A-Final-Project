@@ -1,2 +1,9 @@
 build
+# GTKWave save files
 *.gtkw
+
+# SD card image files
+*.img
+
+# Compiled version of the script used 
+generate_sd_card_data 

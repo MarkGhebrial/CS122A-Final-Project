@@ -80,14 +80,17 @@ typedef enum logic[4:0] {
     CMD17_SEND_STATE = 16,
     // Waiting for CMD17 reply
     CMD17_RCV_STATE = 17,
+    
+    // Waiting for the data token that indicates the start of a block
+    DATA_TOKEN_RCV_STATE = 18,
     // Reading bytes from the block
-    BLOCK_READ_STATE = 18,
+    BLOCK_READ_STATE = 19,
     // Reading checksum at end of block
-    CHECKSUM_READ_STATE = 19,
+    CHECKSUM_READ_STATE = 20,
     /** END BLOCK READ STATES **/
 
     // Waiting for block_addr to change
-    IDLE_STATE = 20
+    IDLE_STATE = 21
 } sd_module_state;
 
 module sd_card(
@@ -96,7 +99,8 @@ module sd_card(
 
     // The address of the block to read from
     input wire[31:0] block_addr,
-    output logic[511:0] block_data,
+    // The data read from the SD card. An array of 512 bytes
+    output logic[511:0][7:0] block_data,
     
     // The status of the module
     output sd_module_status status = INITIALIZING,
@@ -370,6 +374,27 @@ always @(posedge clk) begin
                 end
                 else begin
                     // Go to the next state
+                    state <= DATA_TOKEN_RCV_STATE;
+                    counter <= 0;
+                    `SPI_BEGIN_TRANSFER(1, 'hFF);
+                end
+            end
+        end
+        // We're waiting to receive the block data token
+        DATA_TOKEN_RCV_STATE: begin
+            if (!spi_transmitting) begin
+                // We haven't received the block data token yet, so transfer another byte
+                if (rx_data == 'hFF) begin
+                    // TODO: Find the correct threshold to use for this condition
+                    //if (counter < 100) begin
+                        `SPI_BEGIN_TRANSFER(1, 'hFF);
+                        counter <= counter + 1;
+                    //end else begin
+                    //    `RESET_STATE_MACHINE;
+                    //end
+                end
+                else begin
+                    // Go to the next state
                     state <= BLOCK_READ_STATE;
                     counter <= 0;
                     `SPI_BEGIN_TRANSFER(8, ~64'b0);
@@ -379,9 +404,9 @@ always @(posedge clk) begin
         // We are reading the block data
         BLOCK_READ_STATE: begin
             if (!spi_transmitting) begin
-                if (counter < 8) begin
-                    // Shift the received data into the block_data register
-                    block_data <= { block_data[447:0], rx_data };
+                // Shift the received data into the block_data register
+                block_data <= { block_data[(511-8):0], rx_data }; // TODO: This is probably incorrect
+                if (counter < 63) begin
                     counter <= counter + 1;
                     `SPI_BEGIN_TRANSFER(8, ~64'b0);
                 end

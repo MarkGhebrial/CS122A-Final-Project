@@ -57,12 +57,19 @@ sd_card sd (
 
 
 assign logic_analyzer_pins = {
-    // state,
-    // rx_data[30],
-    // rx_data[30],
-    // rx_data[30],
-    // rx_data[30],
-    // rx_data[30],
+    // block_data[7:] == 8'hFB,
+    // block_data[31:24] == 8'hFC,
+    // block_data[23:16] == 8'hFD,
+    // block_data[15:8] == 8'hFE,
+    // block_data[7:0] == 8'hFF,
+
+    // block_data[3] == 8'hFC,
+    // block_data[2] == 8'hFD,
+    // block_data[1] == 8'hFE,
+    // block_data[0] == 8'hFF,
+    block_data[0][0:3],
+
+    sd_cs,
     sd_pico, // MOSI
     sd_poci, // MISO
     sd_sck
