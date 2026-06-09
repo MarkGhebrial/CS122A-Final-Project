@@ -1,4 +1,9 @@
-module spi_controller (
+`ifndef __SPI_CONTROLLER_SV
+`define __SPI_CONTROLLER_SV
+
+module spi_controller #(
+    parameter MAX_NUM_BYTES = 8
+) (
     input wire clk,
 
     // Toggle this to begin data transfer.
@@ -6,11 +11,11 @@ module spi_controller (
     output wire transmitting,
 
     // The number of bytes to transfer. Maximum is 8.
-    input wire[3:0] num_bytes,
+    input wire[$clog2(MAX_NUM_BYTES):0] num_bytes,
     // The data to send in the transfer (MSB first)
-    input wire[63:0] tx_data,
+    input wire[(8*MAX_NUM_BYTES - 1):0] tx_data,
     // The data received in the transfer (MSB first)
-    output logic[63:0] rx_data = 0,
+    output logic[(8*MAX_NUM_BYTES - 1):0] rx_data = 0,
     
     // Clock signal
     output wire sck,
@@ -33,7 +38,7 @@ always @(posedge clk) begin
         if (counter < num_bytes * 8) begin
             sck_en <= 1;
             counter <= counter + 1;
-            // Write to pico on falling edges of the clock pin
+            // Write to pico on falling edges of the sck pin
             pico <= (tx_data >> (num_bytes*8 - counter - 1)) & 1'b1;
         end else begin
             counter <= 0;
@@ -46,8 +51,9 @@ end
 always @(posedge sck) begin
     if (sck_en) begin
         // Receive a bit
-        rx_data <= { rx_data[62:0], poci } & (~64'b0 >> 8*(8-num_bytes));
-        //                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mask off the most significant bits based on the number of bytes we're receiving
+        rx_data <= { rx_data[62:0], poci } & (~'b0 >> 8*(MAX_NUM_BYTES-num_bytes));
+        //                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //                                   Mask off the most significant bits based on the number of bytes we're receiving
     end
 end
 
@@ -56,3 +62,5 @@ assign transmitting = start_tx != prev_start_tx || sck_en;
 assign sck = sck_en && ~clk;
 
 endmodule
+
+`endif
