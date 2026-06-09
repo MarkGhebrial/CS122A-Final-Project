@@ -4,7 +4,27 @@ BLOCK ASYNCPATHS;
 // Set the clock to run at 25Mhz
 LOCATE COMP "clk" SITE "P6";
 IOBUF PORT "clk" IO_TYPE=LVCMOS33;
-FREQUENCY PORT "clk" 25 MHZ;
+FREQUENCY PORT "clk" 12.5 MHZ;
+
+// Outputs to logic analyzer
+LOCATE COMP "logic_analyzer_pins[0]" SITE "P7";
+IOBUF PORT "logic_analyzer_pins[0]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[1]" SITE "R6";
+IOBUF PORT "logic_analyzer_pins[1]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[2]" SITE "T4";
+IOBUF PORT "logic_analyzer_pins[2]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[3]" SITE "T3";
+IOBUF PORT "logic_analyzer_pins[3]" DRIVE=4 IO_TYPE=LVCMOS33;
+
+LOCATE COMP "logic_analyzer_pins[4]" SITE "T6";
+IOBUF PORT "logic_analyzer_pins[4]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[5]" SITE "R5";
+IOBUF PORT "logic_analyzer_pins[5]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[6]" SITE "R4";
+IOBUF PORT "logic_analyzer_pins[6]" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "logic_analyzer_pins[7]" SITE "R3";
+IOBUF PORT "logic_analyzer_pins[7]" DRIVE=4 IO_TYPE=LVCMOS33;
+
 
 // Outputs for SD card communication
 LOCATE COMP "sd_sck" SITE "J12";
@@ -17,29 +37,3 @@ IOBUF PORT "sd_cs" DRIVE=4 IO_TYPE=LVCMOS33;
 // Inputs for SD card communication
 LOCATE COMP "sd_poci" SITE "K12";
 INPUT PORT "sd_poci" IO_TYPE=LVCMOS33;
-
-
-// Outputs for pico communication
-LOCATE COMP "pico_sck" SITE "P7";
-IOBUF PORT "pico_sck" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "pico_pico" SITE "R6";
-IOBUF PORT "pico_pico" DRIVE=4 IO_TYPE=LVCMOS33;
-
-// Inputs for pico communication
-LOCATE COMP "pico_poci" SITE "T4";
-INPUT PORT "pico_poci" IO_TYPE=LVCMOS33;
-
-
-// Outputs for sd card reader status
-LOCATE COMP "status[0]" SITE "K3";
-IOBUF PORT "status[0]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "status[1]" SITE "H3";
-IOBUF PORT "status[1]" DRIVE=4 IO_TYPE=LVCMOS33;
-
-// DAC outputs
-LOCATE COMP "DAC_CLK" SITE "J13";
-IOBUF PORT "DAC_CLK" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "DAC_LRC" SITE "K13";
-IOBUF PORT "DAC_LRC" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "DATAOUT" SITE "F13";
-IOBUF PORT "DATAOUT" DRIVE=4 IO_TYPE=LVCMOS33;
