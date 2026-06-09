@@ -48,7 +48,9 @@ sd_card uut (
 
 // File descriptor for sd card data capture file
 int fd = 0;
-int ch;
+int sample;
+int counter = 0;
+int failures = 0;
 always begin 
     #1;
     clk =~ clk;
@@ -62,30 +64,51 @@ initial begin
 
     $display("Processing... Hang tight.");
 
-    $fgetc(fd);
-    // if ($feof(fd)) begin
-    //     $fclose(fd);
-    //     $finish();
-    // end
-    // sd_poci = ch[1];
-    ch = $fgetc(fd);
+    // Read the first two samples
+    $fgetc(fd); sample = $fgetc(fd);
+    sd_poci = sample[1];
+end
+
+always @(posedge sd_sck) begin
+    // Verify that the sd card controller is sending the right data on the SPI bus
+    if (sample[2] != sd_pico) begin
+        $display("incorrect pico signal at sck tick ", counter);
+        failures = failures + 1;
+    end
+    if (sample[3] != sd_cs) begin
+        $display("incorrect cs signal at the ", counter, "th sck tick");
+        failures = failures + 1;
+    end
+
+    // Read the next sample from the file
+    sample = $fgetc(fd);
     if ($feof(fd)) begin
+        // Verify that the data in the block data register is correct
+        for (int i = 0; i < 512; i = i + 1) begin
+            if (block_data[i] != 255 - (i % 256)) begin
+                $display("Incorrect data in block data register at index ", i, "; Expected ", 255 - (i % 256), ", found ", block_data[i]);
+                failures = failures + 1;
+            end
+        end
+
+        if (failures == 0) begin
+            $display("Test PASSED!");
+        end
+        else begin
+            $display("Test FAILED with ", failures, " failures.");
+        end
+
         $fclose(fd);
         $finish();
     end
-    sd_poci = ch[1];
+
+    // Keep track of the number of SCK rising edges
+    counter = counter + 1;
 end
 
 // Update MISO on falling sck edges
 always @(negedge sd_sck) begin
-    ch = $fgetc(fd);
-
-    if ($feof(fd)) begin
-        $fclose(fd);
-        $finish();
-    end
-
-    sd_poci = ch[1];
+    sd_poci = sample[1];
 end
 
 endmodule
