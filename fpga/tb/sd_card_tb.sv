@@ -69,6 +69,22 @@ initial begin
     sd_poci = sample[1];
 end
 
+always @(posedge clk) begin
+    // Choose a new block address when the current block is done being read
+    if (status == IDLE) begin
+        block_addr = block_addr + 1;
+
+        // Verify that the data in the block data register is correct
+        $display("Validating block");
+        for (int i = 0; i < 512; i = i + 1) begin
+            if (block_data[i] != 255 - (i % 256)) begin
+                $display("Incorrect data in block data register at index ", i, "; Expected ", 255 - (i % 256), ", found ", block_data[i]);
+                failures = failures + 1;
+            end
+        end
+    end
+end
+
 always @(posedge sd_sck) begin
     // Verify that the sd card controller is sending the right data on the SPI bus
     if (sample[2] != sd_pico) begin
@@ -82,15 +98,7 @@ always @(posedge sd_sck) begin
 
     // Read the next sample from the file
     sample = $fgetc(fd);
-    if ($feof(fd)) begin
-        // Verify that the data in the block data register is correct
-        for (int i = 0; i < 512; i = i + 1) begin
-            if (block_data[i] != 255 - (i % 256)) begin
-                $display("Incorrect data in block data register at index ", i, "; Expected ", 255 - (i % 256), ", found ", block_data[i]);
-                failures = failures + 1;
-            end
-        end
-
+    if (counter >= 8000) begin
         if (failures == 0) begin
             $display("Test PASSED!");
         end

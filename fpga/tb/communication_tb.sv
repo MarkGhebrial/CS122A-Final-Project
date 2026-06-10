@@ -1,12 +1,12 @@
-`include "src/newtop.sv"
+`include "src/communication.sv"
 `timescale 1ns/1ps
 
-module newtop_tb;
+module communication_tb;
 
 logic clk = 0;
 
 // Unit under test
-newtop uut
+communicator uut
 (
     .clk(clk)
 );
@@ -17,8 +17,8 @@ always begin
 end
 
 initial begin
-    $dumpfile("build/newtop.vcd"); // intermediate file for waveform generation
-    $dumpvars(0, newtop_tb);       // capture all signals under top_tb
+    $dumpfile("build/communication.vcd"); // intermediate file for waveform generation
+    $dumpvars(0, communication_tb);       // capture all signals under top_tb
 end
 
 initial begin

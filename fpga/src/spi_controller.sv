@@ -26,7 +26,7 @@ module spi_controller #(
 );
 
 // Counts the number of bits transmitted
-logic[6:0] counter = 0;
+logic[$clog2(8*MAX_NUM_BYTES):0] counter = 0;
 
 logic sck_en = 0;
 logic prev_start_tx = 0;

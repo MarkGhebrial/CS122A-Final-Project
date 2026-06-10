@@ -34,20 +34,19 @@ main :: proc() {
     defer os.close(in_file);
     // Read the entire file into `data`
     data, read_err := os.read_entire_file(in_file, context.allocator);
+    defer delete(data)
 
     // Create a file to output to
     out_file, _ := os.create("tb/sd_card_tb_capture.bin");
     defer os.close(out_file);
 
-    counter := 0;
+    out_data: [dynamic]u8;
+    defer delete(out_data)
+
     prev_sample: Sample;
     for byte, index in data {
-        // Only output a limited number of samples. 6321 happens to be the exact number of times SCK
-        // toggles before the first block is done being read. Obviously, having a magic number like
-        // this makes this script very fragile, but I don't really care at this point. Well, I care
-        // enough to write this comment. It's 2am right now and I am writing paragraph comments instead
-        // of actually working on the project. Please someone save me.
-        if counter >= 6321 {
+        // Only output a limited number of samples.
+        if len(out_data) >= 40000 {
             break;
         }
 
@@ -56,13 +55,17 @@ main :: proc() {
 
         // Only emit the samples that occur on rising clock edges
         if index == 0 || sample.sck && !prev_sample.sck {
-            _, _ = os.write_byte(out_file, u8(sample));
-            fmt.printf("%x ", u8(sample));
-            counter += 1;
+            append(&out_data, u8(sample))
         }
 
         prev_sample = sample;
     }
+    fmt.printfln("%i samples kept out of %i total samples", len(out_data), len(data));
 
-    fmt.printfln("\n%i samples kept out of %i total samples", counter, len(data));
+    // Write the data to the file
+    _, write_err := os.write(out_file, out_data[:]);
+    if write_err != nil {
+        fmt.println("Error writing to output file:", write_err);
+        os.exit(-2);
+    }
 }

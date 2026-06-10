@@ -6,21 +6,25 @@ LOCATE COMP "clk" SITE "P6";
 IOBUF PORT "clk" IO_TYPE=LVCMOS33;
 FREQUENCY PORT "clk" 12.5 MHZ;
 
+// Input for enable pin
+LOCATE COMP "en" SITE "F2";
+INPUT PORT "en" IO_TYPE=LVCMOS33;
+
 // Outputs to logic analyzer
 LOCATE COMP "logic_analyzer_pins[0]" SITE "P7";
 IOBUF PORT "logic_analyzer_pins[0]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "logic_analyzer_pins[1]" SITE "R6";
+LOCATE COMP "logic_analyzer_pins[1]" SITE "T6";
 IOBUF PORT "logic_analyzer_pins[1]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "logic_analyzer_pins[2]" SITE "T4";
+LOCATE COMP "logic_analyzer_pins[2]" SITE "R6";
 IOBUF PORT "logic_analyzer_pins[2]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "logic_analyzer_pins[3]" SITE "T3";
+LOCATE COMP "logic_analyzer_pins[3]" SITE "R5";
 IOBUF PORT "logic_analyzer_pins[3]" DRIVE=4 IO_TYPE=LVCMOS33;
 
-LOCATE COMP "logic_analyzer_pins[4]" SITE "T6";
+LOCATE COMP "logic_analyzer_pins[4]" SITE "T4";
 IOBUF PORT "logic_analyzer_pins[4]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "logic_analyzer_pins[5]" SITE "R5";
+LOCATE COMP "logic_analyzer_pins[5]" SITE "R4";
 IOBUF PORT "logic_analyzer_pins[5]" DRIVE=4 IO_TYPE=LVCMOS33;
-LOCATE COMP "logic_analyzer_pins[6]" SITE "R4";
+LOCATE COMP "logic_analyzer_pins[6]" SITE "T3";
 IOBUF PORT "logic_analyzer_pins[6]" DRIVE=4 IO_TYPE=LVCMOS33;
 LOCATE COMP "logic_analyzer_pins[7]" SITE "R3";
 IOBUF PORT "logic_analyzer_pins[7]" DRIVE=4 IO_TYPE=LVCMOS33;
@@ -37,3 +41,9 @@ IOBUF PORT "sd_cs" DRIVE=4 IO_TYPE=LVCMOS33;
 // Inputs for SD card communication
 LOCATE COMP "sd_poci" SITE "K12";
 INPUT PORT "sd_poci" IO_TYPE=LVCMOS33;
+
+// Outputs for Pi Pico communication
+LOCATE COMP "pico_sck" SITE "E1";
+IOBUF PORT "pico_sck" DRIVE=4 IO_TYPE=LVCMOS33;
+LOCATE COMP "pico_pico" SITE "C2";
+IOBUF PORT "pico_pico" DRIVE=4 IO_TYPE=LVCMOS33;

@@ -1,5 +1,9 @@
-`include "src/spi_controller.sv"
 `default_nettype none
+
+`ifndef __SD_CARD_SV
+`define __SD_CARD_SV
+
+`include "src/spi_controller.sv"
 
 /*
 SD card SPI command format:
@@ -443,3 +447,5 @@ end
 
 
 endmodule
+
+`endif
