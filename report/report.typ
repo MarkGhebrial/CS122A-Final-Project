@@ -104,7 +104,7 @@ TODO: Instructions on flashing audio data onto an SD card
 - Generic speaker
 
 = List of Software Libraries
-On the Pico we use (TODO: Jade please fill this out).
+On the Raspberry Pi Pico 2, we used circuit python to process raw pcm data (place into a buffer) and output it as I2S.
 
 On the FPGA, all the code was written by us.
 
@@ -112,12 +112,19 @@ On the FPGA, all the code was written by us.
 - SD card SPI protocol.
   - This is a protocol built on top of SPI. It uses fixed length, 6 byte commands. Most command responses are 1 byte, but some append extra data.
 - I2S
+  - This is a protocol that is technically handled by Circuit Python. It just outputs raw PCM data, a LR signal (for left and right stereo), and CLK at 512 kHz to the MAX98357A.
 
 // / SD card SPI: fdsafdsafa
 // / fdsafdsafasfsa: fdsafdsaf
 
 = How we met the Requirements listed in the Proposal
 _In the proposal???_ We don't meet any of the requirements at all. Our project scope has changed so much that our project proposal is not an accurate picture of what we delivered.
+
+Ultimately though, we were able to successfully read data from the SD card.
+
+We were also able to output this data onto a speaker, though the library that we used to output the I2S has some very strange implementations such that it only is able to load one sound and play it once or keep looping it. We understand the protocol completely, so if we had more time (it took 3 weeks to switch to using the library because the I2S implementation didn't work and the clock was off by 15 kHz which led to noise I think) then maybe we could have implemented something that had the capacity to play any data that was input into it rather than load data once.
+
+We did not implement the keyboard nor the 
 
 
 = Design Diagrams
@@ -126,7 +133,7 @@ TODO: Maybe sketch something out on paper and
 
 
 == SD Card Module State Machine
-The FPGA module
+The Verilog module that handles communication with the SD card contains a large state machine.
 
 == FPGA Module Hierarchy
 #diagram(
@@ -171,18 +178,7 @@ The FPGA module
 Neither team member used AI for any part of this project.
 
 = Acknowledgements
-Massive thank you to RB for being so chill.
- 
-// This project aims to convert an old laptop keyboard into a USB keyboard. The FPGA will scan the keyboard matrix and send keypress events to the Raspberry Pi Pico, which will act as a USB HID device and forward those keypress events to a computer. On each keypress, the FPGA will also read audio data from an SD card and stream audio to an I2S amplifier.
+Massive thank you to RB for being so chill. Another thanks to Allen Knight for helping with debugging I2S on the fpga even if it didn't work out in the end.
 
-= Hardware
-// What hardware components we plan to use
-We plan to use the following hardware components:
-- Raspberry Pi Pico 2 W
-- iCESugar-pro
-- MAX98357 I2S amplifier
-- Generic speaker
-- 2nd generation Thinkpad T14 keyboard
-- Micro SD card
+No other outside code was used for the Raspberry Pi Pico 2 or the FPGA except for the pll clock.
 
-Here is a photo of the keyboard we plan to use:
