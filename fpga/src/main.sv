@@ -1,9 +1,9 @@
 `include "src/sd_card.sv"
 `include "src/communication.sv"
+`include "src/peripheral.sv"
 
 module main (
     input wire clk,
-    input wire en,
 
     // Pins for SPI communication with the SD card
     output wire sd_sck,
@@ -12,12 +12,16 @@ module main (
     output wire sd_cs, // SD card chip select
 
     // Pins for SPI communication with the Pi Pico
-    output wire pico_sck,
-    output wire pico_pico
+    input wire pico_clk,
+    output wire pico_data
 );
 
 wire internal_clk;
 assign internal_clk = clk & en;
+
+wire en;
+wire pico_sck;
+wire pico_pico;
 
 wire sd_start_tx;
 wire sd_transmitting;
@@ -61,6 +65,14 @@ communicator c (
     .status(status),
     .sck(pico_sck),
     .pico(pico_pico)
+);
+
+peripheral p (
+    .sck(pico_sck),
+    .communicator(pico_pico),
+    .en(en),
+    .pico_clk(pico_clk),
+    .pico_data(pico_data)
 );
 
 endmodule

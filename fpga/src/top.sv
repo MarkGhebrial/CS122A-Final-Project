@@ -5,17 +5,16 @@
 
 module top (
     input wire clk,
-    input wire en,
     
     output wire sd_sck,
     input wire sd_poci,
     output wire sd_pico,
     output wire sd_cs,
 
-    output wire pico_sck,
-    output wire pico_pico,
+    input wire pico_clk,
+    output wire pico_data,
 
-    output wire[7:0] logic_analyzer_pins
+    output wire[5:0] logic_analyzer_pins
 );
 
 wire slow_clk;
@@ -31,20 +30,17 @@ wire sd_sck;
 
 main m (
     .clk(slow_clk),
-    .en(1),
     .sd_sck(sd_sck),
     .sd_poci(sd_poci),
     .sd_pico(sd_pico),
     .sd_cs(sd_cs),
-    .pico_sck(pico_sck),
-    .pico_pico(pico_pico)
+    .pico_clk(pico_clk),
+    .pico_data(pico_data)
 );
 
 assign logic_analyzer_pins = {
-    en,
     slow_clk,
-    pico_pico,
-    pico_sck,
+    pico_data,
 
     sd_cs,
     sd_pico, // MOSI
