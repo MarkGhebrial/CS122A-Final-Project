@@ -16,7 +16,7 @@ int wavcount = 0;
 int thing = 0;
 int wavchange = 0;
 initial begin
-  $readmemh("include\\hi.txt", wavmem);
+  $readmemh("include/hi.txt", wavmem);
 end
 
 // Logic

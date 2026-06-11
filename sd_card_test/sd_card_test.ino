@@ -44,7 +44,12 @@ struct BlockReadResponse {
 };
 
 void sendSPICommand(SPICommand c) {
-  Serial.println("Sending SPI command");
+  Serial.print("CMD");
+  Serial.print(c.command_index);
+  Serial.print("; arg: ");
+  Serial.print(c.argument, HEX);
+  Serial.print("; crc: ");
+  Serial.println(c.crc, HEX);
 
   uint8_t buf[6];
   // Convert the command to a sequence of bytes
@@ -56,22 +61,18 @@ void sendSPICommand(SPICommand c) {
   }
   buf[5] = (c.crc << 1) | 0b1;
 
-  Serial.println("aaaa");
-
   // TODO: Drive CS from high to low
   digitalWrite(CS, HIGH);
   delay(1);
   digitalWrite(CS, LOW);
 
-  Serial.println("b");
-
   for (int i = 0; i < 6; i++) {
-    Serial.print("Transferring: ");
-    Serial.println(buf[i], BIN);
+    // Serial.print("Transferring: ");
+    // Serial.println(buf[i], BIN);
     SPI.transfer(buf[i]);
   }
 
-  Serial.println("c");
+  // Serial.println("c");
 }
 
 // Read a 1 byte response from the SD card.
@@ -80,8 +81,11 @@ uint8_t readR1SPIResponse() {
   uint8_t byte = 0;
   do {
     byte = SPI.transfer(0xFF);
-    Serial.print("Read byte: "); Serial.println(byte, BIN);
+    // Serial.print("Read byte: "); Serial.println(byte, BIN);
   } while (byte & (0b1 << 7));
+
+  Serial.print("R1: ");
+  Serial.println(byte, HEX);
 
   return byte;
 }
@@ -95,6 +99,9 @@ R3SPIResponse readR3SPIResponse() {
   for (int i = 0; i < 4; i++) {
     ocr |= SPI.transfer(0xFF) << ((3-i)*8);
   }
+
+  Serial.print("R3: ");
+  Serial.println(ocr, HEX);
 
   return R3SPIResponse(r1, ocr);
 }
@@ -184,9 +191,10 @@ void setup() {
   Serial.begin(115200);
 
   delay(2000);
-  Serial.println("Initializing sd card: ");
-  Serial.print("Result: ");
-  Serial.println(initSDCard());
+  // Serial.println("Initializing sd card: ");
+  // Serial.print("Result: ");
+  // Serial.println(initSDCard());
+  initSDCard();
 }
 
 void loop() {
@@ -198,6 +206,8 @@ void loop() {
     Serial.write(result.block[511-i]);
   }
   Serial.println();
+
+  while (1);
 
   delay(4000);
 }

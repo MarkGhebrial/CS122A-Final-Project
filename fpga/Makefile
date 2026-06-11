@@ -3,7 +3,7 @@
 %.sim: tb/%_tb.sv #src/*.sv
 	iverilog -g2012 -o build/$@ $<
 	vvp build/$@
-	gtkwave build/$*.vcd $*.gtkw
+	gtkwave build/$*.vcd gtkw/$*.gtkw
 
 %.bit: src/%.sv
 	yosys -p "synth_ecp5 -json build/$*.json" $^
